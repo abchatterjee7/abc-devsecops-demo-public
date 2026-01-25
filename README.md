@@ -98,16 +98,23 @@ All pipeline workloads will be executed on SSH-based Jenkins agents.
 ## **1. Create the EC2 instance**
 
 * **AMI:** Ubuntu 24.04 LTS
-* **Instance type:** c7i-flex.large
+* **Instance type:** c7i-flex.large (OR) t2.medium
 
   > This instance type is eligible under AWS credits-based free tier
 * **Root volume:** 20 GB or more
 
 **Security Group (jenkins-controller VM):**
-
+- Add two Inbound rules
 * Allow **SSH (22)** from your IP
-* Allow **HTTP (8080)** from your IP (for Jenkins UI)
+* Allow **HTTP (8080)** to 0.0.0.0/0 (for Jenkins UI)
 
+- Add three Outbound Rule to allow your instance to talk to the internet:
+```
+Type: HTTP, HTTPS and SSH
+Protocol: TCP, SSH
+Port Range: 80, 443 and 22
+Destination: 0.0.0.0/0
+```
 ---
 
 ## **2. Connect to the instance**
@@ -122,6 +129,12 @@ Ensure your private key is restricted:
 chmod 600 ~/.ssh/<your-private-key>
 chown $(whoami):$(whoami) ~/.ssh/<your-private-key>
 ```
+```
+(OR), use mobaxterm to login into jenkins-controller ubuntu machine.
+providing public-ip as host, ubuntu as default-name & attaching downloaded .pem file.
+```
+
+![Alt text](/images/mobax.png)
 
 Set hostname:
 
@@ -166,6 +179,27 @@ echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] \
 
 sudo apt update
 sudo apt install -y jenkins
+```
+
+As of late December 2025/January 2026, Jenkins updated their repository signing keys again. The 7198F4B714ABFC68 error you're seeing is because the 2023 key is now considered "old" and a new key is required for the latest releases.
+
+1. Remove the old repository file and the old key (in case if you used old one):
+```
+sudo rm /etc/apt/sources.list.d/jenkins.list
+sudo rm /usr/share/keyrings/jenkins-keyring.gpg
+```
+2. Download the NEW signing key (jenkins.io-2026.key):
+```
+curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key | sudo gpg --dearmor -o /usr/share/keyrings/jenkins-keyring.gpg --yes
+```
+3. Add the repository again, pointing to the new key:
+```
+echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.gpg] https://pkg.jenkins.io/debian-stable binary/" | sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null
+```
+4. Update and Install:
+```
+sudo apt update
+sudo apt install jenkins -y
 ```
 
 ---
@@ -237,7 +271,7 @@ It will have JDK 21, Docker, and a non-root `jenkins` user.
 
 ---
 
-### **1. Create the EC2 instance**
+### **1. Create the EC2 instance (jenkins-agent)**
 
 * **AMI:** Ubuntu 24.04 LTS
 * **Instance type:** c7i-flex.large
@@ -247,6 +281,8 @@ It will have JDK 21, Docker, and a non-root `jenkins` user.
 
 * Allow **SSH (22)** from the controller IP only
 * Do not expose Jenkins UI (8080) on the agent
+
+* Allow port 80 for HTTP, 443 for HTTPS and 9000 with Custom TCP for outbound rules.
 
 > Note: Jenkins controller connects to agents over SSH (port 22).
 > Only open TCP 50000 on the controller if you use JNLP inbound agents; otherwise it is not required.
@@ -323,9 +359,12 @@ Use a **meaningful filename** and a **different comment**:
 
 ```bash
 # You land in the home directory of jenkins user which is /var/lib/jenkins
+mkdir .ssh
+cd .ssh
 sudo su - jenkins
 ssh-keygen -t ed25519 -f /var/lib/jenkins/.ssh/jenkins-agent-key -C "jenkins-agent-access"
 ```
+use enter to not give any specific passphrase.
 
 Explanation:
 
@@ -467,7 +506,21 @@ exit
 **Expected result:**
 
 ```
-Agent successfully connected and online
+Agent successfully connected and online. Sometimes one has to do,
+http://13.232.97.24:8080/manage/credentials/store/system/domain/_/credential/jenkins-agent/update -> private key -> Enter directly
+
+again (bug in jenkins) from 
+
+jenkins@jenkins-controller:~/.ssh$ cat jenkins-agent-key
+-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
+QyNTUxOQAAACC6ExuLSEoUQtZsP/EY6sV53113jr47LOtvJYhIApJbCQAAAJhcDjFTXA4x
+UwAAAAtzc2gtZWQyNTUxOQAAACC6ExuLSEoUQtZsP/EY6sV53113jr47LOtvJYhIApJbCQ
+AAAEBopCvzV4kGIaFBCaabar6iChKAaiAi2T1EgQD/9/2wj7oTG4tIShRC1mw/8RjqxXnf
+XXeOvjss628liEgCklsJAAAAFGplbmtpbnMtYWdlbnQtYWNjZXNzAQ==
+-----END OPENSSH PRIVATE KEY-----
+
+save it and launch agent again, it'll work.
 ```
 
 **Quick verification steps (if UI shows connected but you want to confirm):**
@@ -482,6 +535,10 @@ whoami
 ```
 
 Console should print the agent hostname and `jenkins`.
+
+---
+
+![Alt text](/images/ec2.png)
 
 ---
 
@@ -707,7 +764,7 @@ Uncomment and set these lines (replace the password/host if needed):
 sonar.jdbc.username=sonar
 
 # DB password for that user; keep this secret and match your DB setup
-sonar.jdbc.password=StrongPasswordHere
+sonar.jdbc.password=sonar #(StrongPasswordHere)
 
 # JDBC URL: jdbc:postgresql://<host>:<port>/<database>
 # default PostgreSQL port is 5432 — using localhost because DB is on same VM
@@ -829,6 +886,10 @@ In many production deployments:
 * Authentication integrates with **LDAP, SSO or OIDC**
 * Backups are planned for both **database** and **configuration**
 * Some teams move SonarQube to **Kubernetes**, but the VM pattern like this is still very common
+
+---
+
+![Alt text](/images/sonarqube.png)
 
 ---
 
@@ -1056,7 +1117,7 @@ SSH into the agent:
 ssh -i <your-key>.pem ubuntu@<jenkins-agent-public-ip>
 ```
 
-Install Trivy using the Debian package (recommended):
+Install Trivy using the Debian package (recommended) in jenkins-agent:
 
 ```bash
 # install wget
@@ -1514,7 +1575,7 @@ AWS Console → **Amazon ECR → Private Registry → Create Repository**
 From the repo → **View push commands** gives the login snippet:
 
 ```bash
-aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 386275436648.dkr.ecr.ap-south-1.amazonaws.com
+aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 147055017588.dkr.ecr.ap-south-1.amazonaws.com
 ```
 
 ---
@@ -1529,7 +1590,7 @@ pipeline {
   }
   environment {
     SONAR_IP = '172.31.21.44'
-    ECR_REGISTRY = '386275436648.dkr.ecr.ap-south-1.amazonaws.com'
+    ECR_REGISTRY = '147055017588.dkr.ecr.ap-south-1.amazonaws.com'
   }
   stages {
     stage('Trivy FS Scan') {
@@ -1561,7 +1622,7 @@ pipeline {
 
 ### **Explanation**
 
-* `environment { ECR_REGISTRY = '386275436648.dkr.ecr.ap-south-1.amazonaws.com' }`
+* `environment { ECR_REGISTRY = '147055017588.dkr.ecr.ap-south-1.amazonaws.com' }`
   Stores the private ECR registry hostname so we avoid repeating long URLs inside stages.
 
 * `aws ecr get-login-password --region ap-south-1`
@@ -1656,7 +1717,7 @@ pipeline {
   }
   environment {
     SONAR_IP = '172.31.21.44'
-    ECR_REGISTRY = '386275436648.dkr.ecr.ap-south-1.amazonaws.com'
+    ECR_REGISTRY = '147055017588.dkr.ecr.ap-south-1.amazonaws.com'
     IMAGE_REPO = "${ECR_REGISTRY}/abc-devsecops-demo"
   }
   stages {
@@ -1863,6 +1924,10 @@ stage('Push to ECR') {
 
 ---
 
+![Alt text](/images/ecr.png)
+
+---
+
 ### **Why this stage matters**
 
 * Pushes the exact artifact that was scanned and validated in prior stages.
@@ -1945,7 +2010,7 @@ spec:
               app: abc-devsecops-demo  
       containers:  
         - name: abc-devsecops-demo  
-          image: 386275436648.dkr.ecr.ap-south-1.amazonaws.com/abc-devsecops-demo:latest  
+          image: 147055017588.dkr.ecr.ap-south-1.amazonaws.com/abc-devsecops-demo:latest  
           ports:  
             - containerPort: 8080  
 ```
@@ -2078,12 +2143,20 @@ kubectl rollout status -n abc-devsecops deployment/abc-devsecops-demo --timeout=
 
 ---
 
+![Alt text](/images/jenkins-stages.png)
+
+---
+
 ### **What this stage does (high level)**
 
 * Ensures Jenkins agent can talk to the EKS cluster via updated kubeconfig.
 * Creates the demo namespace and applies the Deployment+Service manifests.
 * Waits for the deployment to roll out; on failure it undoes the rollout and fails the stage.
 * Enforces least-privilege: we only grant the Jenkins agent the RBAC verbs it needs (deployments, replicasets, pods, services, namespaces).
+
+```
+Ensure you attach Inbound security group for port 31000 (NodePort) for your both newly created ec2 (cluster using EKS.. say,  eks-cluster-sg-abc-devsecops-eks-1361624363).
+```
 
 ---
 
@@ -2139,7 +2212,7 @@ managedNodeGroups:                        # defines managed node groups
     privateNetworking: false              # nodes get public networking
     ssh:                                  # SSH configuration
       allow: true                         # allow SSH access to nodes
-      publicKeyName: abc-sj-mumbai        # EC2 key pair name for SSH
+      publicKeyName: abc-mumbai-ubuntuKey # EC2 key pair name for SSH
     iam:                                  # per-node-group IAM settings
       withAddonPolicies:                  # enable addon policies
         autoScaler: true                  # allow cluster autoscaler usage
@@ -2148,7 +2221,7 @@ managedNodeGroups:                        # defines managed node groups
         externalDNS: true                 # allow ExternalDNS addon
     labels:                               # node labels for scheduling
       owner: AB-Chatterjee                # node label owner
-      app: devsecops-demo                 # node label app
+      app: abc-devsecops-demo                 # node label app
     tags:                                 # node-level tags
       node-type: public-worker            # custom tag
       managed-by: eksctl                  # managed by eksctl
@@ -2165,6 +2238,10 @@ Verify node AZ distribution:
 ```bash
 kubectl get nodes --show-labels | grep topology.kubernetes.io/zone
 ```
+
+---
+
+![Alt text](/images/eks.png)
 
 ---
 
@@ -2192,7 +2269,7 @@ sudo -u jenkins kubectl version --client
 
 ### **Modify `jenkins-agent-role` to allow kubeconfig update**
 
-Attach an inline policy to the `jenkins-agent-role` that permits `eks:DescribeCluster` for the cluster:
+Attach an inline policy to the `jenkins-agent-role` that permits `eks:DescribeCluster` for the cluster (say, temp-eksnode-policy with respect to jenkins-agent EC2):
 
 ```json
 {
@@ -2203,7 +2280,7 @@ Attach an inline policy to the `jenkins-agent-role` that permits `eks:DescribeCl
       "Action": [
         "eks:DescribeCluster"
       ],
-      "Resource": "arn:aws:eks:ap-south-1:386275436648:cluster/abc-devsecops-eks"
+      "Resource": "arn:aws:eks:ap-south-1:147055017588:cluster/abc-devsecops-eks"
     }
   ]
 }
@@ -2224,7 +2301,7 @@ Before adding our Jenkins role, let’s understand the **existing** ConfigMap cr
 apiVersion: v1
 data:
   mapRoles: |
-    - rolearn: arn:aws:iam::386275436648:role/eksctl-abc-devsecops-eks-nodegrou-NodeInstanceRole-J3Szf4uMWv1R
+    - rolearn: arn:aws:iam::147055017588:role/eksctl-abc-devsecops-eks-nodegrou-NodeInstanceRole-J3Szf4uMWv1R
       groups:
       - system:bootstrappers
       - system:nodes
@@ -2305,7 +2382,7 @@ Now that we understand the existing mapping, we add:
 
 ```yaml
 mapRoles: |
-  - rolearn: arn:aws:iam::386275436648:role/jenkins-agent-role
+  - rolearn: arn:aws:iam::147055017588:role/jenkins-agent-role
     username: jenkins-agent-role
     groups:
       - system:authenticated
@@ -2524,6 +2601,16 @@ pipeline {
   }
 }
 ```
+---
+
+## Final Output
+
+![Alt text](/images/stages.png)
+
+![Alt text](/images/worker1.png)
+
+![Alt text](/images/worker2.png)
+
 ---
 
 

@@ -29,7 +29,7 @@ managedNodeGroups:
 
     ssh:
       allow: true
-      publicKeyName: abc-sj-mumbai   # your EC2 key pair name
+      publicKeyName: abc-mumbai-ubuntuKey   # your EC2 key pair name
 
     iam:
       withAddonPolicies:
@@ -41,7 +41,7 @@ managedNodeGroups:
         cloudWatch: false
     labels:
       owner: abchatterjee7
-      app: devsecops-demo
+      app: abc-devsecops-demo
     tags:
       node-type: public-worker
       managed-by: eksctl

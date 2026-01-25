@@ -25,7 +25,7 @@ spec:
               app: abc-devsecops-demo
       containers:
         - name: abc-devsecops-demo
-          image: 386275436648.dkr.ecr.ap-south-1.amazonaws.com/abc-devsecops-demo:latest
+          image: 147055017588.dkr.ecr.ap-south-1.amazonaws.com/abc-devsecops-demo:latest
           ports:
             - containerPort: 8080
 

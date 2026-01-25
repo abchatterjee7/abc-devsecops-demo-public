@@ -6,7 +6,7 @@
       "Action": [
         "eks:DescribeCluster"
       ],
-      "Resource": "arn:aws:eks:ap-south-1:386275436648:cluster/abc-devsecops-eks"
+      "Resource": "arn:aws:eks:ap-south-1:147055017588:cluster/abc-devsecops-eks"
     }
   ]
 }
