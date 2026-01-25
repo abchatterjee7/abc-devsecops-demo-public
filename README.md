@@ -2143,7 +2143,7 @@ kubectl rollout status -n abc-devsecops deployment/abc-devsecops-demo --timeout=
 
 ---
 
-![Alt text](/images/jenkins-stages.png)
+![Alt text](/images/Jenkins-stages.png)
 
 ---
 
