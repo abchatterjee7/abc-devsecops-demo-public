@@ -70,6 +70,8 @@ The goal is to show how real companies implement **secure CI/CD** using a combin
 By the end of this lesson, you will understand how each stage contributes to a hardened delivery pipeline — from scanning code on commit to deploying a signed, validated image on a topology-aware Kubernetes cluster.
 This flow reflects **actual production implementations** used in modern enterprises.
 
+![Alt text](/images/me1.png)
+
 ---
 
 
