@@ -2707,6 +2707,7 @@ I kept this demo single-branch for simplicity.
 ArgoCD implements a **pull-based deployment** model where Kubernetes syncs itself from Git.
 This ensures Git becomes the **single source of truth**, provides automated sync, drift detection, and instant rollbacks.
 Not included here because ArgoCD has not yet been taught on my channel, but this is one of the most important next steps after mastering Jenkins pipelines.
+You can learn ArgoCD from here https://github.com/abchatterjee7/ArgoCD-Notes
 
 ---
 
