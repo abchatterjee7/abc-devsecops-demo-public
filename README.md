@@ -100,7 +100,7 @@ All pipeline workloads will be executed on SSH-based Jenkins agents.
 ## **1. Create the EC2 instance**
 
 * **AMI:** Ubuntu 24.04 LTS
-* **Instance type:** c7i-flex.large (OR) t2.medium
+* **Instance type:** c7i-flex.large (OR) t3.medium
 
   > This instance type is eligible under AWS credits-based free tier
 * **Root volume:** 20 GB or more
@@ -276,7 +276,7 @@ It will have JDK 21, Docker, and a non-root `jenkins` user.
 ### **1. Create the EC2 instance (jenkins-agent)**
 
 * **AMI:** Ubuntu 24.04 LTS
-* **Instance type:** c7i-flex.large
+* **Instance type:** c7i-flex.large (OR) t3.medium
 * **Root volume:** 30 GB+ (Trivy scans need space)
 
 **Security group (jenkins-agent VM):**
@@ -551,7 +551,7 @@ For the lab, we will keep SonarQube and PostgreSQL on the **same VM**. This is o
 ### 1. Create the EC2 instance
 
 * AMI: Ubuntu 22.04 LTS
-* Instance type: c7i-flex.large (SonarQube likes RAM)
+* Instance type: c7i-flex.large (SonarQube likes RAM) (OR) t3.medium
   > **Note:** The instance type **c7i-flex.large** is eligible under the AWS **credits-based free tier**, so you will not incur charges as long as you remain within your credit balance.
 
 * Root volume: 20 GB or more
