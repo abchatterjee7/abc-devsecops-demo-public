@@ -1,5 +1,7 @@
 # Complete DevSecOps CI/CD Pipeline | Multi-AZ Amazon EKS + Jenkins + Trivy + SonarQube + ECR + GitHub
 
+https://www.youtube.com/watch?v=KA8l0FENjPI
+
 ---
 
 ## **Table of Contents**
